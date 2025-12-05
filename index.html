@@ -327,34 +327,60 @@
             `).join('');
         }
 
-        async function triggerWorkflow() {
-            const btn = document.getElementById('triggerBtn');
-            btn.disabled = true;
-            btn.textContent = 'Running...';
+async function triggerWorkflow() {
+    if (TRIGGER_WEBHOOK.includes('YOUR_N8N')) {
+        showError('Please configure the TRIGGER_WEBHOOK URL first');
+        return;
+    }
+    
+    const btn = document.getElementById('triggerBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Running workflow...';
+    
+    try {
+        const url = AUTH_TOKEN ? `${TRIGGER_WEBHOOK}?token=${AUTH_TOKEN}` : TRIGGER_WEBHOOK;
+        await fetch(url, { method: 'POST' });
+        
+        btn.textContent = '✅ Triggered! Checking for updates...';
+        
+        // Poll for new data every 5 seconds for up to 2 minutes
+        let pollCount = 0;
+        const maxPolls = 24; // 2 minutes (24 * 5 seconds)
+        const lastUpdate = document.getElementById('lastUpdate').textContent;
+        
+        const pollInterval = setInterval(async () => {
+            pollCount++;
+            btn.textContent = `🔄 Checking... (${pollCount * 5}s)`;
             
-            try {
-                await fetch(TRIGGER_WEBHOOK, { method: 'POST' });
-                btn.textContent = 'Triggered! Check back in 1 minute...';
-                
-                // Reload dashboard after 60 seconds
+            await loadDashboard();
+            const newUpdate = document.getElementById('lastUpdate').textContent;
+            
+            // Check if data has been updated
+            if (newUpdate !== lastUpdate) {
+                clearInterval(pollInterval);
+                btn.textContent = '✅ Dashboard Updated!';
                 setTimeout(() => {
-                    loadDashboard();
                     btn.disabled = false;
                     btn.textContent = 'Run DCA Check Now';
-                }, 60000);
-            } catch (error) {
-                console.error('Error triggering workflow:', error);
-                btn.disabled = false;
-                btn.textContent = 'Run DCA Check Now';
-                showError('Failed to trigger workflow. Please try again.');
+                }, 2000);
+            } else if (pollCount >= maxPolls) {
+                // Timeout after 2 minutes
+                clearInterval(pollInterval);
+                btn.textContent = '⚠️ Check complete (data may not have changed)';
+                setTimeout(() => {
+                    btn.disabled = false;
+                    btn.textContent = 'Run DCA Check Now';
+                }, 3000);
             }
-        }
-
-        function showError(message) {
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('error').textContent = message;
-            document.getElementById('error').style.display = 'block';
-        }
+        }, 5000); // Poll every 5 seconds
+        
+    } catch (error) {
+        console.error('Error triggering workflow:', error);
+        btn.disabled = false;
+        btn.textContent = 'Run DCA Check Now';
+        showError(`Failed to trigger workflow: ${error.message}`);
+    }
+}
 
         // Initial load
         loadDashboard();
