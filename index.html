@@ -83,6 +83,12 @@
             color: #ef4444;
         }
         
+        .stat-secondary {
+            font-size: 0.85em;
+            color: #999;
+            margin-top: 5px;
+        }
+        
         .content-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -102,12 +108,12 @@
             font-size: 1.5em;
         }
         
-        .transaction-list, .decision-list {
+        .transaction-list {
             max-height: 400px;
             overflow-y: auto;
         }
         
-        .transaction-item, .decision-item {
+        .transaction-item {
             padding: 15px;
             border-bottom: 1px solid #f0f0f0;
             display: flex;
@@ -115,7 +121,7 @@
             align-items: center;
         }
         
-        .transaction-item:last-child, .decision-item:last-child {
+        .transaction-item:last-child {
             border-bottom: none;
         }
         
@@ -140,6 +146,65 @@
         .tx-type.hold {
             background: #e5e7eb;
             color: #374151;
+        }
+        
+        .performance-metrics {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 10px;
+            transition: background 0.2s;
+        }
+        
+        .metric-row:hover {
+            background: #f3f4f6;
+        }
+        
+        .metric-label {
+            font-size: 0.95em;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .metric-value {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .metric-value.good {
+            color: #10b981;
+        }
+        
+        .metric-value.bad {
+            color: #ef4444;
+        }
+        
+        .metric-value.neutral {
+            color: #f59e0b;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            transition: width 0.5s ease;
         }
         
         .button {
@@ -204,18 +269,22 @@
                 <div class="stat-card">
                     <div class="stat-label">BTC Holdings</div>
                     <div class="stat-value" id="btcHoldings">-</div>
+                    <div class="stat-secondary" id="btcPrice">@ $-</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">Portfolio Value</div>
                     <div class="stat-value" id="portfolioValue">-</div>
+                    <div class="stat-secondary" id="avgCost">Avg cost: $-</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">Total Invested</div>
                     <div class="stat-value" id="totalInvested">-</div>
+                    <div class="stat-secondary" id="txCount">- transactions</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">Profit/Loss</div>
                     <div class="stat-value" id="profitLoss">-</div>
+                    <div class="stat-secondary" id="profitPct">-%</div>
                 </div>
             </div>
             
@@ -226,8 +295,8 @@
                 </div>
                 
                 <div class="panel">
-                    <h2>🤖 AI Decisions</h2>
-                    <div class="decision-list" id="decisionList"></div>
+                    <h2>📈 Portfolio Performance</h2>
+                    <div class="performance-metrics" id="performanceMetrics"></div>
                 </div>
             </div>
             
@@ -248,149 +317,270 @@
         const TRIGGER_WEBHOOK = 'https://ivanviverospersonal.app.n8n.cloud/webhook/dca/trigger';
         const REFRESH_INTERVAL = 600000; // 10 minutes
 
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').textContent = message;
+            document.getElementById('error').style.display = 'block';
+        }
+
         // Load dashboard data
         async function loadDashboard() {
             try {
-                    const response = await fetch(DASHBOARD_WEBHOOK);
-                    let data = await response.json();
-
-                    // Handle if response is an array
-                    if (Array.isArray(data)) {
+                const response = await fetch(DASHBOARD_WEBHOOK);
+                let data = await response.json();
+                
+                // Handle if response is an array
+                if (Array.isArray(data)) {
                     data = data[0];
-                    }
-
-renderDashboard(data);
+                }
+                
+                // Check if data is valid
+                if (!data || !data.portfolio) {
+                    throw new Error('Invalid data format received from webhook');
+                }
+                
+                renderDashboard(data);
                 
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'block';
                 document.getElementById('error').style.display = 'none';
             } catch (error) {
                 console.error('Error loading dashboard:', error);
-                showError('Failed to load dashboard. Please check your webhook URL.');
+                showError('Failed to load dashboard: ' + error.message);
             }
+        }
+
+        function calculatePerformanceMetrics(data) {
+            const { portfolio, recentTransactions, sellTargets } = data;
+            const currentPrice = portfolio.currentPrice;
+            const avgCost = portfolio.avgCost;
+            
+            // Filter only BUY transactions
+            const buyTransactions = recentTransactions.filter(tx => tx.type === 'BUY');
+            
+            // Calculate win rate (% of purchases currently profitable)
+            const profitablePurchases = buyTransactions.filter(tx => currentPrice > tx.price);
+            const winRate = buyTransactions.length > 0 
+                ? (profitablePurchases.length / buyTransactions.length) * 100 
+                : 0;
+            
+            // Find best and worst purchases
+            const sortedByPrice = [...buyTransactions].sort((a, b) => a.price - b.price);
+            const bestPurchase = sortedByPrice[0];
+            const worstPurchase = sortedByPrice[sortedByPrice.length - 1];
+            
+            const bestPurchaseGain = bestPurchase 
+                ? ((currentPrice - bestPurchase.price) / bestPurchase.price) * 100 
+                : 0;
+            const worstPurchaseLoss = worstPurchase 
+                ? ((currentPrice - worstPurchase.price) / worstPurchase.price) * 100 
+                : 0;
+            
+            // Calculate accumulation rate (BTC per day)
+            if (buyTransactions.length > 1) {
+                const oldestTx = new Date(buyTransactions[buyTransactions.length - 1].date);
+                const newestTx = new Date(buyTransactions[0].date);
+                const daysDiff = Math.max(1, (newestTx - oldestTx) / (1000 * 60 * 60 * 24));
+                var accumulationRate = portfolio.btc / daysDiff;
+            } else {
+                var accumulationRate = 0;
+            }
+            
+            // Calculate next sell target progress
+            const profitPct = parseFloat(portfolio.profitPct);
+            const activeSellTargets = sellTargets.filter(t => t.status !== 'Unknown' || t.threshold > 0);
+            const sortedTargets = activeSellTargets.sort((a, b) => a.threshold - b.threshold);
+            const nextTarget = sortedTargets.find(t => t.threshold > profitPct) || sortedTargets[sortedTargets.length - 1];
+            
+            let targetProgress = 0;
+            let targetLabel = 'No target set';
+            if (nextTarget) {
+                targetProgress = Math.min(100, Math.max(0, (profitPct / nextTarget.threshold) * 100));
+                targetLabel = `${nextTarget.threshold}% (${nextTarget.sellPercentage}% sell)`;
+            }
+            
+            // Calculate DCA efficiency score (0-100)
+            // Factors: win rate (40%), profit margin (30%), consistency (30%)
+            const profitMarginScore = Math.min(100, Math.max(0, (profitPct + 50) * 2)); // -50% to +50% mapped to 0-100
+            const consistencyScore = buyTransactions.length >= 5 ? 100 : (buyTransactions.length / 5) * 100;
+            const dcaScore = Math.round(
+                (winRate * 0.4) + 
+                (profitMarginScore * 0.3) + 
+                (consistencyScore * 0.3)
+            );
+            
+            return {
+                winRate,
+                bestPurchase: {
+                    price: bestPurchase?.price || 0,
+                    gain: bestPurchaseGain
+                },
+                worstPurchase: {
+                    price: worstPurchase?.price || 0,
+                    loss: worstPurchaseLoss
+                },
+                accumulationRate,
+                nextTarget: {
+                    label: targetLabel,
+                    progress: targetProgress,
+                    threshold: nextTarget?.threshold || 0
+                },
+                dcaScore
+            };
         }
 
         function renderDashboard(data) {
             const p = data.portfolio;
             
-            // Update stats
+            // Update main stats
             document.getElementById('btcHoldings').textContent = p.btc.toFixed(8) + ' BTC';
+            document.getElementById('btcPrice').textContent = `@ $${p.currentPrice.toLocaleString()}`;
+            
             document.getElementById('portfolioValue').textContent = '$' + p.usd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('avgCost').textContent = `Avg cost: $${p.avgCost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            
             document.getElementById('totalInvested').textContent = '$' + p.invested.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('txCount').textContent = `${p.txCount} transactions`;
             
             const profitElement = document.getElementById('profitLoss');
             const profitSign = p.profitUSD >= 0 ? '+' : '';
-            profitElement.textContent = profitSign + '$' + p.profitUSD.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + 
-                                       ' (' + profitSign + p.profitPct.toFixed(2) + '%)';
+            profitElement.textContent = profitSign + '$' + p.profitUSD.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             profitElement.className = 'stat-value ' + (p.profitUSD >= 0 ? 'positive' : 'negative');
+            document.getElementById('profitPct').textContent = `${profitSign}${p.profitPct.toFixed(2)}%`;
             
             // Update last update time
             document.getElementById('lastUpdate').textContent = new Date(data.lastUpdate).toLocaleString();
             
             // Render transactions
             const txList = document.getElementById('transactionList');
-            txList.innerHTML = data.recentTransactions.map(tx => `
-                <div class="transaction-item">
-                    <div>
-                        <div><span class="tx-type ${tx.type.toLowerCase()}">${tx.type}</span></div>
-                        <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
-                            ${new Date(tx.date).toLocaleDateString()}
+            if (data.recentTransactions && data.recentTransactions.length > 0) {
+                txList.innerHTML = data.recentTransactions.map(tx => `
+                    <div class="transaction-item">
+                        <div>
+                            <div><span class="tx-type ${tx.type.toLowerCase()}">${tx.type}</span></div>
+                            <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                                ${new Date(tx.date).toLocaleDateString()}
+                            </div>
+                            <div style="font-size: 0.8em; color: #999; margin-top: 3px;">
+                                ${tx.trigger || 'Manual'}
+                            </div>
                         </div>
-                        <div style="font-size: 0.8em; color: #999; margin-top: 3px;">
-                            ${tx.trigger || 'Manual'}
+                        <div style="text-align: right;">
+                            <div style="font-weight: bold;">${tx.amountBTC.toFixed(8)} BTC</div>
+                            <div style="font-size: 0.9em; color: #666;">$${tx.amountUSD.toFixed(2)}</div>
+                            <div style="font-size: 0.85em; color: #999;">@$${tx.price.toLocaleString()}</div>
                         </div>
                     </div>
-                    <div style="text-align: right;">
-                        <div style="font-weight: bold;">${tx.amountBTC.toFixed(8)} BTC</div>
-                        <div style="font-size: 0.9em; color: #666;">$${tx.amountUSD.toFixed(2)}</div>
-                        <div style="font-size: 0.85em; color: #999;">@$${tx.price.toLocaleString()}</div>
-                    </div>
-                </div>
-            `).join('');
+                `).join('');
+            } else {
+                txList.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">No recent transactions</div>';
+            }
             
-            // Render AI decisions
-            const aiList = document.getElementById('decisionList');
-            aiList.innerHTML = data.recentDecisions.map(ai => `
-                <div class="decision-item">
-                    <div>
-                        <div><span class="tx-type ${ai.action.toLowerCase()}">${ai.action}</span></div>
-                        <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
-                            ${new Date(ai.date).toLocaleDateString()}
-                        </div>
-                        <div style="font-size: 0.8em; color: #555; margin-top: 5px; max-width: 300px;">
-                            ${ai.reasoning}
-                        </div>
-                    </div>
-                    <div style="text-align: right;">
-                        <div style="font-weight: bold;">${(ai.confidence * 100).toFixed(0)}%</div>
-                        <div style="font-size: 0.85em; color: #666;">confidence</div>
-                        <div style="font-size: 0.85em; color: #999; margin-top: 5px;">
-                            F&G: ${ai.fearGreed}
-                        </div>
+            // Render performance metrics
+            const metrics = calculatePerformanceMetrics(data);
+            const metricsContainer = document.getElementById('performanceMetrics');
+            
+            metricsContainer.innerHTML = `
+                <div class="metric-row">
+                    <div class="metric-label">Win Rate</div>
+                    <div class="metric-value ${metrics.winRate >= 60 ? 'good' : metrics.winRate >= 40 ? 'neutral' : 'bad'}">
+                        ${metrics.winRate.toFixed(1)}%
                     </div>
                 </div>
-            `).join('');
+                
+                <div class="metric-row">
+                    <div class="metric-label">Best Entry</div>
+                    <div class="metric-value good">
+                        $${metrics.bestPurchase.price.toLocaleString()} (+${metrics.bestPurchase.gain.toFixed(1)}%)
+                    </div>
+                </div>
+                
+                <div class="metric-row">
+                    <div class="metric-label">Worst Entry</div>
+                    <div class="metric-value ${metrics.worstPurchase.loss >= 0 ? 'good' : 'bad'}">
+                        $${metrics.worstPurchase.price.toLocaleString()} (${metrics.worstPurchase.loss >= 0 ? '+' : ''}${metrics.worstPurchase.loss.toFixed(1)}%)
+                    </div>
+                </div>
+                
+                <div class="metric-row">
+                    <div class="metric-label">Accumulation Rate</div>
+                    <div class="metric-value">
+                        ${metrics.accumulationRate.toFixed(8)} BTC/day
+                    </div>
+                </div>
+                
+                <div class="metric-row">
+                    <div class="metric-label">DCA Efficiency Score</div>
+                    <div class="metric-value ${metrics.dcaScore >= 70 ? 'good' : metrics.dcaScore >= 50 ? 'neutral' : 'bad'}">
+                        ${metrics.dcaScore}/100
+                    </div>
+                </div>
+                
+                <div style="padding: 15px; background: #f9fafb; border-radius: 10px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <div class="metric-label">Next Target: ${metrics.nextTarget.label}</div>
+                        <div style="font-size: 0.9em; font-weight: bold; color: #667eea;">
+                            ${metrics.nextTarget.progress.toFixed(0)}%
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: ${metrics.nextTarget.progress}%"></div>
+                    </div>
+                </div>
+            `;
         }
 
-async function triggerWorkflow() {
-    if (TRIGGER_WEBHOOK.includes('YOUR_N8N')) {
-        showError('Please configure the TRIGGER_WEBHOOK URL first');
-        return;
-    }
-    
-    const btn = document.getElementById('triggerBtn');
-    btn.disabled = true;
-    btn.textContent = '⏳ Running workflow...';
-    
-    try {
-        const url = AUTH_TOKEN ? `${TRIGGER_WEBHOOK}?token=${AUTH_TOKEN}` : TRIGGER_WEBHOOK;
-        await fetch(url, { method: 'POST' });
-        
-        btn.textContent = '✅ Triggered! Checking for updates...';
-        
-        // Poll for new data every 5 seconds for up to 2 minutes
-        let pollCount = 0;
-        const maxPolls = 24; // 2 minutes (24 * 5 seconds)
-        const lastUpdate = document.getElementById('lastUpdate').textContent;
-        
-        const pollInterval = setInterval(async () => {
-            pollCount++;
-            btn.textContent = `🔄 Checking... (${pollCount * 5}s)`;
+        async function triggerWorkflow() {
+            const btn = document.getElementById('triggerBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Running workflow...';
             
-            await loadDashboard();
-            const newUpdate = document.getElementById('lastUpdate').textContent;
-            
-            // Check if data has been updated
-            if (newUpdate !== lastUpdate) {
-                clearInterval(pollInterval);
-                btn.textContent = '✅ Dashboard Updated!';
-                setTimeout(() => {
-                    btn.disabled = false;
-                    btn.textContent = 'Run DCA Check Now';
-                }, 2000);
-            } else if (pollCount >= maxPolls) {
-                // Timeout after 2 minutes
-                clearInterval(pollInterval);
-                btn.textContent = '⚠️ Check complete (data may not have changed)';
-                setTimeout(() => {
-                    btn.disabled = false;
-                    btn.textContent = 'Run DCA Check Now';
-                }, 3000);
+            try {
+                await fetch(TRIGGER_WEBHOOK, { method: 'POST' });
+                
+                btn.textContent = '✅ Triggered! Checking for updates...';
+                
+                // Poll for new data every 5 seconds for up to 2 minutes
+                let pollCount = 0;
+                const maxPolls = 24;
+                const lastUpdate = document.getElementById('lastUpdate').textContent;
+                
+                const pollInterval = setInterval(async () => {
+                    pollCount++;
+                    btn.textContent = `🔄 Checking... (${pollCount * 5}s)`;
+                    
+                    await loadDashboard();
+                    const newUpdate = document.getElementById('lastUpdate').textContent;
+                    
+                    if (newUpdate !== lastUpdate) {
+                        clearInterval(pollInterval);
+                        btn.textContent = '✅ Dashboard Updated!';
+                        setTimeout(() => {
+                            btn.disabled = false;
+                            btn.textContent = 'Run DCA Check Now';
+                        }, 2000);
+                    } else if (pollCount >= maxPolls) {
+                        clearInterval(pollInterval);
+                        btn.textContent = '⚠️ Check complete (data may not have changed)';
+                        setTimeout(() => {
+                            btn.disabled = false;
+                            btn.textContent = 'Run DCA Check Now';
+                        }, 3000);
+                    }
+                }, 5000);
+                
+            } catch (error) {
+                console.error('Error triggering workflow:', error);
+                btn.disabled = false;
+                btn.textContent = 'Run DCA Check Now';
+                showError(`Failed to trigger workflow: ${error.message}`);
             }
-        }, 5000); // Poll every 5 seconds
-        
-    } catch (error) {
-        console.error('Error triggering workflow:', error);
-        btn.disabled = false;
-        btn.textContent = 'Run DCA Check Now';
-        showError(`Failed to trigger workflow: ${error.message}`);
-    }
-}
+        }
 
         // Initial load
         loadDashboard();
         
-        // Auto-refresh
+        // Auto-refresh every 10 minutes
         setInterval(loadDashboard, REFRESH_INTERVAL);
     </script>
 </body>
