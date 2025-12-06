@@ -457,9 +457,16 @@
             const txList = document.getElementById('transactionList');
             if (data.recentTransactions && data.recentTransactions.length > 0) {
                 txList.innerHTML = data.recentTransactions.map(tx => {
-                    // Always show the full trigger as reasoning
-                    const fullReasoning = tx.trigger || 'Manual transaction';
-                    const isManual = fullReasoning === 'Manual' || fullReasoning === 'Manual transaction';
+                    // Use fullText which combines trigger + reasoning
+                    // Or combine them here if using older webhook
+                    let displayText = tx.fullText || tx.trigger || 'Manual transaction';
+                    
+                    // If we have separate reasoning field, combine them
+                    if (!tx.fullText && tx.reasoning && tx.reasoning.trim() !== '') {
+                        displayText = `${tx.trigger}: ${tx.reasoning}`;
+                    }
+                    
+                    const isManual = displayText === 'Manual' || displayText === 'Manual transaction';
                     
                     return `
                     <div class="transaction-item" style="flex-direction: column; align-items: stretch;">
@@ -477,7 +484,7 @@
                             </div>
                         </div>
                         <div style="font-size: 0.82em; color: #555; background: ${isManual ? '#f3f4f6' : '#f0f9ff'}; padding: 10px 12px; border-radius: 8px; margin-top: 4px; line-height: 1.5; border-left: 3px solid ${isManual ? '#9ca3af' : '#667eea'};">
-                            ${isManual ? '📋' : '💡'} ${fullReasoning}
+                            ${isManual ? '📋' : '💡'} ${displayText}
                         </div>
                     </div>
                 `}).join('');
