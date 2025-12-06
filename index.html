@@ -116,9 +116,11 @@
         .transaction-item {
             padding: 15px;
             border-bottom: 1px solid #f0f0f0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            transition: background 0.2s;
+        }
+        
+        .transaction-item:hover {
+            background: #f9fafb;
         }
         
         .transaction-item:last-child {
@@ -454,24 +456,31 @@
             // Render transactions
             const txList = document.getElementById('transactionList');
             if (data.recentTransactions && data.recentTransactions.length > 0) {
-                txList.innerHTML = data.recentTransactions.map(tx => `
-                    <div class="transaction-item">
-                        <div>
-                            <div><span class="tx-type ${tx.type.toLowerCase()}">${tx.type}</span></div>
-                            <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
-                                ${new Date(tx.date).toLocaleDateString()}
+                txList.innerHTML = data.recentTransactions.map(tx => {
+                    // Always show the full trigger as reasoning
+                    const fullReasoning = tx.trigger || 'Manual transaction';
+                    const isManual = fullReasoning === 'Manual' || fullReasoning === 'Manual transaction';
+                    
+                    return `
+                    <div class="transaction-item" style="flex-direction: column; align-items: stretch;">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                            <div>
+                                <div><span class="tx-type ${tx.type.toLowerCase()}">${tx.type}</span></div>
+                                <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                                    ${new Date(tx.date).toLocaleDateString()} ${new Date(tx.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </div>
                             </div>
-                            <div style="font-size: 0.8em; color: #999; margin-top: 3px;">
-                                ${tx.trigger || 'Manual'}
+                            <div style="text-align: right;">
+                                ${tx.amountBTC > 0 ? `<div style="font-weight: bold;">${tx.amountBTC.toFixed(8)} BTC</div>` : '<div style="font-weight: bold; color: #999;">No Trade</div>'}
+                                ${tx.amountUSD > 0 ? `<div style="font-size: 0.9em; color: #666;">$${tx.amountUSD.toFixed(2)}</div>` : '<div style="font-size: 0.9em; color: #999;">$0.00</div>'}
+                                <div style="font-size: 0.85em; color: #999;">@$${tx.price.toLocaleString()}</div>
                             </div>
                         </div>
-                        <div style="text-align: right;">
-                            <div style="font-weight: bold;">${tx.amountBTC.toFixed(8)} BTC</div>
-                            <div style="font-size: 0.9em; color: #666;">$${tx.amountUSD.toFixed(2)}</div>
-                            <div style="font-size: 0.85em; color: #999;">@$${tx.price.toLocaleString()}</div>
+                        <div style="font-size: 0.82em; color: #555; background: ${isManual ? '#f3f4f6' : '#f0f9ff'}; padding: 10px 12px; border-radius: 8px; margin-top: 4px; line-height: 1.5; border-left: 3px solid ${isManual ? '#9ca3af' : '#667eea'};">
+                            ${isManual ? '📋' : '💡'} ${fullReasoning}
                         </div>
                     </div>
-                `).join('');
+                `}).join('');
             } else {
                 txList.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">No recent transactions</div>';
             }
