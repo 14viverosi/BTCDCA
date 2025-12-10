@@ -1167,7 +1167,7 @@
                 
                 if (error || !user) {
                     // Not authenticated, redirect to login
-                    window.location.href = 'login.html';
+                    .href = 'login.html';
                     return;
                 }
 
@@ -1585,7 +1585,7 @@
                 await supabaseClient.auth.signOut();
                 
                 // Redirect to login
-                window.location.href = 'login_supabase.html';
+                window.location.href = 'login.html';
                 
             } catch (error) {
                 console.error('Logout error:', error);
