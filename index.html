@@ -3,601 +3,1850 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bitcoin DCA Dashboard</title>
+    <title>Bitcoin DCA Bot - Trading Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Aeonik:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: #333;
-            padding: 20px;
+
+        :root {
+            --bg-primary: #0a0e13;
+            --bg-secondary: #131922;
+            --bg-tertiary: #1a2332;
+            --bg-elevated: #1f2937;
+            --border-primary: #2a3441;
+            --border-secondary: #374151;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-tertiary: #6b7280;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-blue: #3b82f6;
+            --accent-yellow: #f59e0b;
+            --accent-purple: #8b5cf6;
+            --shadow-lg: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+            --shadow-xl: 0 20px 50px -12px rgba(0, 0, 0, 0.7);
         }
-        
-        .container {
+
+        body {
+            font-family: 'Aeonik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* Animated gradient background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 20% 50%, rgba(16, 185, 129, 0.05) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 50%, rgba(59, 130, 246, 0.05) 0%, transparent 50%);
+            animation: gradientRotate 20s ease-in-out infinite;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        @keyframes gradientRotate {
+            0%, 100% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.1); }
+        }
+
+        /* Navbar */
+        nav {
+            background: rgba(19, 25, 34, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border-primary);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            animation: slideDown 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        nav .container {
             max-width: 1400px;
             margin: 0 auto;
-        }
-        
-        .header {
-            background: white;
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-        }
-        
-        .header h1 {
-            font-size: 2.5em;
-            color: #667eea;
-            margin-bottom: 10px;
-        }
-        
-        .last-update {
-            color: #666;
-            font-size: 0.9em;
-        }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .stat-card {
-            background: white;
-            padding: 25px;
-            border-radius: 15px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
-            transition: transform 0.3s;
-        }
-        
-        .stat-card:hover {
-            transform: translateY(-5px);
-        }
-        
-        .stat-label {
-            color: #666;
-            font-size: 0.85em;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 10px;
-        }
-        
-        .stat-value {
-            font-size: 2em;
-            font-weight: bold;
-            color: #333;
-        }
-        
-        .stat-value.positive {
-            color: #10b981;
-        }
-        
-        .stat-value.negative {
-            color: #ef4444;
-        }
-        
-        .stat-secondary {
-            font-size: 0.85em;
-            color: #999;
-            margin-top: 5px;
-        }
-        
-        .content-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-        }
-        
-        .panel {
-            background: white;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.08);
-        }
-        
-        .panel h2 {
-            color: #667eea;
-            margin-bottom: 20px;
-            font-size: 1.5em;
-        }
-        
-        .transaction-list {
-            max-height: 400px;
-            overflow-y: auto;
-        }
-        
-        .transaction-item {
-            padding: 15px;
-            border-bottom: 1px solid #f0f0f0;
-            transition: background 0.2s;
-        }
-        
-        .transaction-item:hover {
-            background: #f9fafb;
-        }
-        
-        .transaction-item:last-child {
-            border-bottom: none;
-        }
-        
-        .tx-type {
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.75em;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        
-        .tx-type.buy {
-            background: #dcfce7;
-            color: #166534;
-        }
-        
-        .tx-type.sell {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-        
-        .tx-type.hold {
-            background: #e5e7eb;
-            color: #374151;
-        }
-        
-        .performance-metrics {
-            display: grid;
-            gap: 15px;
-        }
-        
-        .metric-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 15px;
-            background: #f9fafb;
-            border-radius: 10px;
-            transition: background 0.2s;
+            gap: 2rem;
         }
-        
-        .metric-row:hover {
-            background: #f3f4f6;
+
+        nav .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+            flex-shrink: 0;
         }
-        
-        .metric-label {
-            font-size: 0.95em;
-            color: #666;
+
+        nav .nav-links {
+            display: flex;
+            gap: 2rem;
+            list-style: none;
+            flex-grow: 1;
+            justify-content: center;
+        }
+
+        nav .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
             font-weight: 500;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+            position: relative;
         }
-        
-        .metric-value {
-            font-size: 1.1em;
-            font-weight: bold;
-            color: #333;
+
+        nav .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--accent-blue);
+            transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        
-        .metric-value.good {
-            color: #10b981;
+
+        nav .nav-links a:hover {
+            color: var(--text-primary);
         }
-        
-        .metric-value.bad {
-            color: #ef4444;
-        }
-        
-        .metric-value.neutral {
-            color: #f59e0b;
-        }
-        
-        .progress-bar {
+
+        nav .nav-links a:hover::after {
             width: 100%;
-            height: 8px;
-            background: #e5e7eb;
-            border-radius: 10px;
-            overflow: hidden;
-            margin-top: 8px;
         }
-        
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            border-radius: 10px;
-            transition: width 0.5s ease;
+
+        nav .nav-links a.active {
+            color: var(--text-primary);
         }
-        
-        .button {
-            background: #667eea;
+
+        nav .nav-links a.active::after {
+            width: 100%;
+        }
+
+        /* User Menu */
+        .user-menu {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-shrink: 0;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            border: 1px solid var(--border-primary);
+        }
+
+        .user-avatar-small {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.85rem;
             color: white;
-            border: none;
-            padding: 15px 30px;
+            flex-shrink: 0;
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-name-nav {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .user-email-nav {
+            font-size: 0.75rem;
+            color: var(--text-tertiary);
+            line-height: 1.2;
+        }
+
+        .btn-logout {
+            padding: 0.5rem 1rem;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--accent-red);
             border-radius: 10px;
-            font-size: 1em;
-            font-weight: bold;
+            font-weight: 600;
+            font-size: 0.85rem;
             cursor: pointer;
-            transition: all 0.3s;
-            margin-top: 20px;
-            width: 100%;
+            transition: all 0.2s;
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
-        
-        .button:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+
+        .btn-logout:hover {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.5);
         }
-        
-        .button:disabled {
-            background: #cbd5e1;
-            cursor: not-allowed;
-            transform: none;
+
+        /* Main Container */
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
         }
-        
-        .loading {
-            text-align: center;
-            padding: 40px;
+
+        /* Hero Section - Portfolio Overview */
+        .hero {
+            background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
+            border: 1px solid var(--border-primary);
+            border-radius: 24px;
+            padding: 3rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-xl);
+            animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1), transparent);
+            border-radius: 50%;
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.1; }
+            50% { transform: scale(1.2); opacity: 0.15; }
+        }
+
+        .hero-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 2rem;
+        }
+
+        .portfolio-value {
+            position: relative;
+            z-index: 1;
+        }
+
+        .portfolio-label {
+            font-size: 0.9rem;
+            color: var(--text-tertiary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .portfolio-amount {
+            font-size: 3.5rem;
+            font-weight: 700;
+            font-family: 'IBM Plex Mono', monospace;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+            animation: countUp 1s ease-out;
+        }
+
+        @keyframes countUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .portfolio-change {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 0.5rem 1rem;
+            border-radius: 12px;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-green);
+        }
+
+        .portfolio-change.negative {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--accent-red);
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-green));
             color: white;
-            font-size: 1.2em;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
         }
-        
-        .error {
-            background: #fee2e2;
-            color: #991b1b;
-            padding: 20px;
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border-secondary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--text-tertiary);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(31, 41, 55, 0.5);
+            backdrop-filter: blur(10px);
+            border: 1px solid var(--border-primary);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--border-secondary);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-tertiary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            font-family: 'IBM Plex Mono', monospace;
+            color: var(--text-primary);
+        }
+
+        .stat-change {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        /* Main Grid Layout */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.4s both;
+        }
+
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        /* Card Styles */
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 20px;
+            padding: 2rem;
+            box-shadow: var(--shadow-lg);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .card:hover {
+            border-color: var(--border-secondary);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .card-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-tertiary);
+            margin-top: 0.25rem;
+        }
+
+        .card-action {
+            color: var(--accent-blue);
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .card-action:hover {
+            color: var(--accent-green);
+        }
+
+        /* Transaction List */
+        .transaction-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-primary);
+            border-radius: 12px;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            cursor: pointer;
+        }
+
+        .transaction-item:hover {
+            background: var(--bg-elevated);
+            border-color: var(--border-secondary);
+            transform: translateX(4px);
+        }
+
+        .transaction-left {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .transaction-icon {
+            width: 40px;
+            height: 40px;
             border-radius: 10px;
-            margin: 20px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
         }
-        
-        @media (max-width: 768px) {
-            .content-grid {
+
+        .transaction-icon.buy {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-green);
+        }
+
+        .transaction-icon.sell {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--accent-red);
+        }
+
+        .transaction-icon.hold {
+            background: rgba(156, 163, 175, 0.1);
+            color: var(--text-secondary);
+        }
+
+        .transaction-info h4 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .transaction-info p {
+            font-size: 0.85rem;
+            color: var(--text-tertiary);
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        .transaction-right {
+            text-align: right;
+        }
+
+        .transaction-amount {
+            font-size: 1rem;
+            font-weight: 700;
+            font-family: 'IBM Plex Mono', monospace;
+            margin-bottom: 0.25rem;
+        }
+
+        .transaction-price {
+            font-size: 0.85rem;
+            color: var(--text-tertiary);
+        }
+
+        /* AI Decision Badge */
+        .ai-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            background: rgba(139, 92, 246, 0.1);
+            color: var(--accent-purple);
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+
+        .ai-confidence {
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        /* Settings Panel */
+        .settings-panel {
+            position: sticky;
+            top: 100px;
+            height: fit-content;
+        }
+
+        .settings-group {
+            margin-bottom: 2rem;
+        }
+
+        .settings-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .settings-group-title {
+            font-size: 0.85rem;
+            color: var(--text-tertiary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        .setting-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 0;
+            border-bottom: 1px solid var(--border-primary);
+        }
+
+        .setting-item:last-child {
+            border-bottom: none;
+        }
+
+        .setting-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .setting-value {
+            font-weight: 600;
+            font-family: 'IBM Plex Mono', monospace;
+            color: var(--text-primary);
+        }
+
+        .setting-value.positive {
+            color: var(--accent-green);
+        }
+
+        .setting-value.negative {
+            color: var(--accent-red);
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 24px;
+            background: var(--bg-elevated);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+            border: 1px solid var(--border-primary);
+        }
+
+        .toggle-switch.active {
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(24px);
+        }
+
+        /* Status Indicator */
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-green);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--accent-green);
+            border-radius: 50%;
+            animation: blink 2s ease-in-out infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Chart Placeholder */
+        .chart-container {
+            height: 300px;
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-tertiary);
+            font-size: 0.9rem;
+            border: 1px dashed var(--border-primary);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chart-container::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(59, 130, 246, 0.05) 50%, 
+                transparent 100%);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .main-grid {
                 grid-template-columns: 1fr;
             }
+            
+            .settings-panel {
+                position: static;
+            }
+
+            .user-details {
+                display: none;
+            }
+        }
+
+        @media (max-width: 768px) {
+            nav .container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            nav .nav-links {
+                flex-wrap: wrap;
+                justify-content: center;
+                gap: 1rem;
+            }
+
+            .user-menu {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .user-info {
+                flex: 1;
+            }
+
+            .hero {
+                padding: 2rem;
+            }
+
+            .portfolio-amount {
+                font-size: 2.5rem;
+            }
+
+            .hero-top {
+                flex-direction: column;
+                gap: 1.5rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .container {
+                padding: 1rem;
+            }
+        }
+
+        /* Loading Animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--accent-blue);
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-secondary);
+            border-radius: 8px;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s;
+            margin-bottom: 0.5rem;
+        }
+
+        .tooltip:hover::after {
+            opacity: 1;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: var(--shadow-xl);
+            animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid var(--border-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+        }
+
+        .modal-close {
+            font-size: 1.5rem;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            transition: color 0.2s;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 2rem;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group:last-of-type {
+            margin-bottom: 2rem;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-primary);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            font-family: 'IBM Plex Mono', monospace;
+            transition: all 0.2s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .input-group input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .input-group small {
+            display: block;
+            margin-top: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-tertiary);
+        }
+
+        .input-group small a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .input-group small a:hover {
+            text-decoration: underline;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+        }
+
+        /* Notification System */
+        .notification {
+            position: fixed;
+            top: 100px;
+            right: 2rem;
+            padding: 1rem 1.5rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 12px;
+            box-shadow: var(--shadow-xl);
+            z-index: 3000;
+            transform: translateX(400px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            max-width: 350px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .notification::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .notification-success {
+            border-left: 3px solid var(--accent-green);
+        }
+
+        .notification-success::before {
+            background: var(--accent-green);
+        }
+
+        .notification-error {
+            border-left: 3px solid var(--accent-red);
+        }
+
+        .notification-error::before {
+            background: var(--accent-red);
+        }
+
+        .notification-info {
+            border-left: 3px solid var(--accent-blue);
+        }
+
+        .notification-info::before {
+            background: var(--accent-blue);
+            animation: blink 1.5s ease-in-out infinite;
+        }
+
+        /* Editable Setting Hover */
+        .setting-item[data-param] {
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .setting-item[data-param]:hover {
+            background: rgba(59, 130, 246, 0.05);
+            padding-left: 0.5rem;
+            margin-left: -0.5rem;
+            border-radius: 8px;
+        }
+
+        .setting-item[data-param]::after {
+            content: '✏️';
+            opacity: 0;
+            margin-left: 0.5rem;
+            transition: opacity 0.2s;
+        }
+
+        .setting-item[data-param]:hover::after {
+            opacity: 0.5;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="loading" id="loading">Loading dashboard...</div>
-        
-        <div id="dashboard" style="display: none;">
-            <div class="header">
-                <h1>🚀 Bitcoin DCA Bot</h1>
-                <div class="last-update">Last updated: <span id="lastUpdate"></span></div>
-            </div>
-            
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-label">BTC Holdings</div>
-                    <div class="stat-value" id="btcHoldings">-</div>
-                    <div class="stat-secondary" id="btcPrice">@ $-</div>
+    <nav>
+        <div class="container">
+            <div class="logo">⚡ DCA Bot</div>
+            <ul class="nav-links">
+                <li><a href="#" class="active">Dashboard</a></li>
+                <li><a href="#transactions">Transactions</a></li>
+                <li><a href="#settings">Settings</a></li>
+                <li><a href="#analytics">Analytics</a></li>
+            </ul>
+            <div class="user-menu">
+                <div class="user-info">
+                    <div class="user-avatar-small" id="user-avatar">JD</div>
+                    <div class="user-details">
+                        <div class="user-name-nav" id="user-name">John Doe</div>
+                        <div class="user-email-nav" id="user-email">john@example.com</div>
+                    </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-label">Portfolio Value</div>
-                    <div class="stat-value" id="portfolioValue">-</div>
-                    <div class="stat-secondary" id="avgCost">Avg cost: $-</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Total Invested</div>
-                    <div class="stat-value" id="totalInvested">-</div>
-                    <div class="stat-secondary" id="txCount">- transactions</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Profit/Loss</div>
-                    <div class="stat-value" id="profitLoss">-</div>
-                    <div class="stat-secondary" id="profitPct">-%</div>
-                </div>
-            </div>
-            
-            <div class="content-grid">
-                <div class="panel">
-                    <h2>📊 Recent Transactions</h2>
-                    <div class="transaction-list" id="transactionList"></div>
-                </div>
-                
-                <div class="panel">
-                    <h2>📈 Portfolio Performance</h2>
-                    <div class="performance-metrics" id="performanceMetrics"></div>
-                </div>
-            </div>
-            
-            <div class="panel" style="margin-top: 30px;">
-                <h2>⚡ Manual Control</h2>
-                <button class="button" id="triggerBtn" onclick="triggerWorkflow()">
-                    Run DCA Check Now
+                <button class="btn-logout" onclick="logout()">
+                    <span>🚪</span>
+                    Logout
                 </button>
             </div>
         </div>
-        
-        <div class="error" id="error" style="display: none;"></div>
+    </nav>
+
+    <div class="container">
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-top">
+                <div class="portfolio-value">
+                    <div class="portfolio-label">Total Portfolio Value</div>
+                    <div class="portfolio-amount">$2,667.33</div>
+                    <div class="portfolio-change negative">
+                        <span>▼</span>
+                        <span>$32.67 (-1.21%)</span>
+                    </div>
+                </div>
+                <div class="hero-actions">
+                    <button class="btn btn-primary">
+                        <span>▶</span>
+                        Execute Trade
+                    </button>
+                    <button class="btn btn-secondary">
+                        View Details
+                    </button>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">BTC Holdings</div>
+                    <div class="stat-value">0.029502</div>
+                    <div class="stat-change">2.67 mBTC</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Average Cost Basis</div>
+                    <div class="stat-value">$91,518</div>
+                    <div class="stat-change">FIFO calculation</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Invested</div>
+                    <div class="stat-value">$2,700</div>
+                    <div class="stat-change">18 transactions</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Current BTC Price</div>
+                    <div class="stat-value">$90,411</div>
+                    <div class="stat-change" style="color: var(--accent-red);">-1.23% today</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Grid -->
+        <div class="main-grid">
+            <!-- Main Content -->
+            <div class="main-content">
+                <!-- Recent Activity -->
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title">Recent Activity</h2>
+                            <p class="card-subtitle">Last 10 transactions</p>
+                        </div>
+                        <span class="status-indicator">
+                            <span class="status-dot"></span>
+                            Bot Active
+                        </span>
+                    </div>
+
+                    <div class="transaction-list">
+                        <div class="transaction-item">
+                            <div class="transaction-left">
+                                <div class="transaction-icon hold">HOLD</div>
+                                <div class="transaction-info">
+                                    <h4>Neutral Zone Hold</h4>
+                                    <p>12/8/2025 7:52pm</p>
+                                    <div class="ai-badge">
+                                        <span>🤖 AI</span>
+                                        <span class="ai-confidence">73%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="transaction-right">
+                                <div class="transaction-amount">$0.00</div>
+                                <div class="transaction-price">@$90,411</div>
+                            </div>
+                        </div>
+
+                        <div class="transaction-item">
+                            <div class="transaction-left">
+                                <div class="transaction-icon hold">HOLD</div>
+                                <div class="transaction-info">
+                                    <h4>Neutral Zone Hold</h4>
+                                    <p>12/8/2025 7:00pm</p>
+                                    <div class="ai-badge">
+                                        <span>🤖 AI</span>
+                                        <span class="ai-confidence">70%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="transaction-right">
+                                <div class="transaction-amount">$0.00</div>
+                                <div class="transaction-price">@$90,633</div>
+                            </div>
+                        </div>
+
+                        <div class="transaction-item">
+                            <div class="transaction-left">
+                                <div class="transaction-icon buy">BUY</div>
+                                <div class="transaction-info">
+                                    <h4>Small Spike + AI Enhancement</h4>
+                                    <p>12/8/2025 3:00am</p>
+                                    <div class="ai-badge">
+                                        <span>🤖 AI Override</span>
+                                        <span class="ai-confidence">40%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="transaction-right">
+                                <div class="transaction-amount" style="color: var(--accent-green);">+$125.00</div>
+                                <div class="transaction-price">@$91,533 • 0.001366 BTC</div>
+                            </div>
+                        </div>
+
+                        <div class="transaction-item">
+                            <div class="transaction-left">
+                                <div class="transaction-icon buy">BUY</div>
+                                <div class="transaction-info">
+                                    <h4>AI High Confidence</h4>
+                                    <p>12/5/2025 11:33am</p>
+                                    <div class="ai-badge">
+                                        <span>🤖 AI High Confidence</span>
+                                        <span class="ai-confidence">76%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="transaction-right">
+                                <div class="transaction-amount" style="color: var(--accent-green);">+$130.00</div>
+                                <div class="transaction-price">@$89,055 • 0.001460 BTC</div>
+                            </div>
+                        </div>
+
+                        <div class="transaction-item">
+                            <div class="transaction-left">
+                                <div class="transaction-icon buy">BUY</div>
+                                <div class="transaction-info">
+                                    <h4>Normal DCA</h4>
+                                    <p>12/5/2025 8:01am</p>
+                                </div>
+                            </div>
+                            <div class="transaction-right">
+                                <div class="transaction-amount" style="color: var(--accent-green);">+$100.00</div>
+                                <div class="transaction-price">@$91,265 • 0.001096 BTC</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Performance Chart -->
+                <div class="card">
+                    <div class="card-header">
+                        <div>
+                            <h2 class="card-title">Portfolio Performance</h2>
+                            <p class="card-subtitle">Value over time</p>
+                        </div>
+                        <span class="card-action">View Full Chart →</span>
+                    </div>
+                    <div class="chart-container">
+                        <div>Chart Integration: Connect TradingView or Chart.js</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Sidebar -->
+            <aside class="settings-panel">
+                <div class="card" id="settings">
+                    <div class="card-header">
+                        <h2 class="card-title">Bot Configuration</h2>
+                    </div>
+
+                    <div class="settings-group">
+                        <div class="settings-group-title">Trading Parameters</div>
+                        <div class="setting-item" data-param="base_dca_amount">
+                            <span class="setting-label">Base DCA Amount</span>
+                            <span class="setting-value positive">$50.00</span>
+                        </div>
+                        <div class="setting-item" data-param="max_purchase">
+                            <span class="setting-label">Max Purchase</span>
+                            <span class="setting-value">$125.00</span>
+                        </div>
+                        <div class="setting-item" data-param="max_daily_buys">
+                            <span class="setting-label">Max Daily Buys</span>
+                            <span class="setting-value">5</span>
+                        </div>
+                        <div class="setting-item" data-param="cooldown_hours">
+                            <span class="setting-label">Cooldown Period</span>
+                            <span class="setting-value">3 hours</span>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <div class="settings-group-title">Price Thresholds</div>
+                        <div class="setting-item" data-param="large_dip_multiplier">
+                            <span class="setting-label">Large Dip (-10%)</span>
+                            <span class="setting-value positive">2.5x</span>
+                        </div>
+                        <div class="setting-item" data-param="dip_multiplier">
+                            <span class="setting-label">Dip (-7.5%)</span>
+                            <span class="setting-value positive">1.5x</span>
+                        </div>
+                        <div class="setting-item" data-param="small_dip_multiplier">
+                            <span class="setting-label">Small Dip (-2.5%)</span>
+                            <span class="setting-value positive">0.5x</span>
+                        </div>
+                        <div class="setting-item" data-param="small_spike_multiplier">
+                            <span class="setting-label">Small Spike (+2.5%)</span>
+                            <span class="setting-value negative">0.5x</span>
+                        </div>
+                        <div class="setting-item" data-param="spike_multiplier">
+                            <span class="setting-label">Spike (+7.5%)</span>
+                            <span class="setting-value negative">0.25x</span>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <div class="settings-group-title">AI Configuration</div>
+                        <div class="setting-item">
+                            <span class="setting-label">AI High Confidence</span>
+                            <span class="setting-value">≥75%</span>
+                        </div>
+                        <div class="setting-item" data-param="ai_confidence_max_cap">
+                            <span class="setting-label">AI Confidence Cap</span>
+                            <span class="setting-value">95%</span>
+                        </div>
+                        <div class="setting-item" data-param="ai_confidence_min_floor">
+                            <span class="setting-label">AI Confidence Floor</span>
+                            <span class="setting-value">30%</span>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <div class="settings-group-title">Stop-Loss Protection</div>
+                        <div class="setting-item">
+                            <span class="setting-label">Stop-Loss Enabled</span>
+                            <div class="toggle-switch active"></div>
+                        </div>
+                        <div class="setting-item" data-param="stop_loss_light_sell_pct">
+                            <span class="setting-label">Light Threshold (-5%)</span>
+                            <span class="setting-value negative">Sell 10%</span>
+                        </div>
+                        <div class="setting-item" data-param="stop_loss_moderate_sell_pct">
+                            <span class="setting-label">Moderate (-8%)</span>
+                            <span class="setting-value negative">Sell 20%</span>
+                        </div>
+                        <div class="setting-item" data-param="stop_loss_severe_sell_pct">
+                            <span class="setting-label">Severe (-15%)</span>
+                            <span class="setting-value negative">Sell 40%</span>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <div class="settings-group-title">Market Indicators</div>
+                        <div class="setting-item">
+                            <span class="setting-label">Current Fear & Greed</span>
+                            <span class="setting-value negative">22 (Extreme Fear)</span>
+                        </div>
+                        <div class="setting-item">
+                            <span class="setting-label">Current RSI</span>
+                            <span class="setting-value">37.2</span>
+                        </div>
+                        <div class="setting-item">
+                            <span class="setting-label">Bollinger Position</span>
+                            <span class="setting-value">18.7%</span>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Airtable Configuration Modal -->
+    <div id="airtable-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Airtable Configuration</h3>
+                <span class="modal-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+                    Connect your Airtable to sync settings in real-time
+                </p>
+                <div class="input-group">
+                    <label>Airtable API Key</label>
+                    <input type="password" id="airtable-api-key" placeholder="patXXXXXXXXXXXXXX">
+                    <small>Get your API key from <a href="https://airtable.com/create/tokens" target="_blank">Airtable Tokens</a></small>
+                </div>
+                <div class="input-group">
+                    <label>Base ID</label>
+                    <input type="text" id="airtable-base-id" placeholder="appXXXXXXXXXXXXXX">
+                    <small>Found in your Airtable API documentation</small>
+                </div>
+                <div class="input-group">
+                    <label>Table Name</label>
+                    <input type="text" id="airtable-table-name" placeholder="Parameters" value="Parameters">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeAirtableModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveAirtableConfig()">Connect & Load Settings</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Setting Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Setting</h3>
+                <span class="modal-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <label id="edit-label">Parameter</label>
+                    <input type="number" id="edit-value" step="0.01">
+                    <small id="edit-description">Description</small>
+                </div>
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveSetting()">
+                        <span class="loading" style="display: none;"></span>
+                        <span class="btn-text">Save to Airtable</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        // Configuration
-        const DASHBOARD_WEBHOOK = 'https://ivanviverospersonal.app.n8n.cloud/webhook/dca/dashboard';
-        const TRIGGER_WEBHOOK = 'https://ivanviverospersonal.app.n8n.cloud/webhook/dca/trigger';
-        const REFRESH_INTERVAL = 600000; // 10 minutes
+        // User Authentication Check
+        const CURRENT_USER_KEY = 'dca_bot_current_user';
+        const SESSION_KEY = 'dca_bot_session';
+        let currentUser = null;
 
-        function showError(message) {
-            document.getElementById('loading').style.display = 'none';
-            document.getElementById('error').textContent = message;
-            document.getElementById('error').style.display = 'block';
+        // Check authentication
+        function checkAuth() {
+            const userJson = localStorage.getItem(CURRENT_USER_KEY);
+            const session = localStorage.getItem(SESSION_KEY);
+            
+            if (!userJson || !session) {
+                // Redirect to login
+                window.location.href = 'login.html';
+                return false;
+            }
+            
+            currentUser = JSON.parse(userJson);
+            return true;
         }
 
-        // Load dashboard data
-        async function loadDashboard() {
-            try {
-                const response = await fetch(DASHBOARD_WEBHOOK);
-                let data = await response.json();
-                
-                // Handle if response is an array
-                if (Array.isArray(data)) {
-                    data = data[0];
-                }
-                
-                // Check if data is valid
-                if (!data || !data.portfolio) {
-                    throw new Error('Invalid data format received from webhook');
-                }
-                
-                renderDashboard(data);
-                
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('dashboard').style.display = 'block';
-                document.getElementById('error').style.display = 'none';
-            } catch (error) {
-                console.error('Error loading dashboard:', error);
-                showError('Failed to load dashboard: ' + error.message);
+        // User logout
+        function logout() {
+            if (confirm('Are you sure you want to sign out?')) {
+                localStorage.removeItem(CURRENT_USER_KEY);
+                localStorage.removeItem(SESSION_KEY);
+                localStorage.removeItem('dca_bot_remember');
+                window.location.href = 'login.html';
             }
         }
 
-        function calculatePerformanceMetrics(data) {
-            const { portfolio, recentTransactions, sellTargets } = data;
-            const currentPrice = portfolio.currentPrice;
-            const avgCost = portfolio.avgCost;
+        // Get user-specific storage key
+        function getUserStorageKey(key) {
+            return `${currentUser.id}_${key}`;
+        }
+
+        // Airtable Configuration (user-specific)
+        let airtableConfig = {
+            apiKey: '',
+            baseId: '',
+            tableName: 'Parameters'
+        };
+
+        let parametersData = [];
+        let currentEditingRecord = null;
+
+        // Load user-specific Airtable config
+        function loadUserAirtableConfig() {
+            if (!currentUser) return;
             
-            // Filter only BUY transactions
-            const buyTransactions = recentTransactions.filter(tx => tx.type === 'BUY');
-            
-            // Calculate win rate (% of purchases currently profitable)
-            const profitablePurchases = buyTransactions.filter(tx => currentPrice > tx.price);
-            const winRate = buyTransactions.length > 0 
-                ? (profitablePurchases.length / buyTransactions.length) * 100 
-                : 0;
-            
-            // Find best and worst purchases
-            const sortedByPrice = [...buyTransactions].sort((a, b) => a.price - b.price);
-            const bestPurchase = sortedByPrice[0];
-            const worstPurchase = sortedByPrice[sortedByPrice.length - 1];
-            
-            const bestPurchaseGain = bestPurchase 
-                ? ((currentPrice - bestPurchase.price) / bestPurchase.price) * 100 
-                : 0;
-            const worstPurchaseLoss = worstPurchase 
-                ? ((currentPrice - worstPurchase.price) / worstPurchase.price) * 100 
-                : 0;
-            
-            // Calculate accumulation rate (BTC per day)
-            if (buyTransactions.length > 1) {
-                const oldestTx = new Date(buyTransactions[buyTransactions.length - 1].date);
-                const newestTx = new Date(buyTransactions[0].date);
-                const daysDiff = Math.max(1, (newestTx - oldestTx) / (1000 * 60 * 60 * 24));
-                var accumulationRate = portfolio.btc / daysDiff;
+            // Try to load from user object first (stored in users array)
+            if (currentUser.airtableConfig) {
+                airtableConfig = currentUser.airtableConfig;
             } else {
-                var accumulationRate = 0;
+                // Fallback to user-specific localStorage keys
+                airtableConfig = {
+                    apiKey: localStorage.getItem(getUserStorageKey('airtable_api_key')) || '',
+                    baseId: localStorage.getItem(getUserStorageKey('airtable_base_id')) || '',
+                    tableName: localStorage.getItem(getUserStorageKey('airtable_table_name')) || 'Parameters'
+                };
+            }
+        }
+
+        // Save user-specific Airtable config
+        function saveUserAirtableConfig() {
+            if (!currentUser) return;
+            
+            // Save to user object
+            currentUser.airtableConfig = airtableConfig;
+            localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(currentUser));
+            
+            // Also update in users array
+            const usersJson = localStorage.getItem('dca_bot_users');
+            if (usersJson) {
+                const users = JSON.parse(usersJson);
+                const userIndex = users.findIndex(u => u.id === currentUser.id);
+                if (userIndex !== -1) {
+                    users[userIndex].airtableConfig = airtableConfig;
+                    localStorage.setItem('dca_bot_users', JSON.stringify(users));
+                }
             }
             
-            // Calculate next sell target progress
-            const profitPct = parseFloat(portfolio.profitPct);
-            const activeSellTargets = sellTargets.filter(t => t.status !== 'Unknown' || t.threshold > 0);
-            const sortedTargets = activeSellTargets.sort((a, b) => a.threshold - b.threshold);
-            const nextTarget = sortedTargets.find(t => t.threshold > profitPct) || sortedTargets[sortedTargets.length - 1];
+            // Also save to user-specific localStorage keys (backwards compatibility)
+            localStorage.setItem(getUserStorageKey('airtable_api_key'), airtableConfig.apiKey);
+            localStorage.setItem(getUserStorageKey('airtable_base_id'), airtableConfig.baseId);
+            localStorage.setItem(getUserStorageKey('airtable_table_name'), airtableConfig.tableName);
+        }
+
+        // Update user profile display
+        function updateUserProfile() {
+            if (!currentUser) return;
             
-            let targetProgress = 0;
-            let targetLabel = 'No target set';
-            if (nextTarget) {
-                targetProgress = Math.min(100, Math.max(0, (profitPct / nextTarget.threshold) * 100));
-                targetLabel = `${nextTarget.threshold}% (${nextTarget.sellPercentage}% sell)`;
+            const userNameEl = document.getElementById('user-name');
+            const userEmailEl = document.getElementById('user-email');
+            const userAvatarEl = document.getElementById('user-avatar');
+            
+            if (userNameEl) userNameEl.textContent = currentUser.name;
+            if (userEmailEl) userEmailEl.textContent = currentUser.email;
+            if (userAvatarEl) {
+                const initials = currentUser.name.split(' ').map(n => n[0]).join('').toUpperCase();
+                userAvatarEl.textContent = initials;
             }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check authentication first
+            if (!checkAuth()) return;
             
-            // Calculate DCA efficiency score (0-100)
-            // Factors: win rate (40%), profit margin (30%), consistency (30%)
-            const profitMarginScore = Math.min(100, Math.max(0, (profitPct + 50) * 2)); // -50% to +50% mapped to 0-100
-            const consistencyScore = buyTransactions.length >= 5 ? 100 : (buyTransactions.length / 5) * 100;
-            const dcaScore = Math.round(
-                (winRate * 0.4) + 
-                (profitMarginScore * 0.3) + 
-                (consistencyScore * 0.3)
-            );
+            // Load user-specific config
+            loadUserAirtableConfig();
+            updateUserProfile();
             
-            return {
-                winRate,
-                bestPurchase: {
-                    price: bestPurchase?.price || 0,
-                    gain: bestPurchaseGain
-                },
-                worstPurchase: {
-                    price: worstPurchase?.price || 0,
-                    loss: worstPurchaseLoss
-                },
-                accumulationRate,
-                nextTarget: {
-                    label: targetLabel,
-                    progress: targetProgress,
-                    threshold: nextTarget?.threshold || 0
-                },
-                dcaScore
+            // Load settings if configured
+            if (airtableConfig.apiKey && airtableConfig.baseId) {
+                loadSettingsFromAirtable();
+            } else {
+                showAirtableModal();
+            }
+        });
+
+        // Airtable Modal Functions
+        function showAirtableModal() {
+            document.getElementById('airtable-modal').style.display = 'flex';
+            document.getElementById('airtable-api-key').value = airtableConfig.apiKey;
+            document.getElementById('airtable-base-id').value = airtableConfig.baseId;
+            document.getElementById('airtable-table-name').value = airtableConfig.tableName;
+        }
+
+        function closeAirtableModal() {
+            document.getElementById('airtable-modal').style.display = 'none';
+        }
+
+        function saveAirtableConfig() {
+            const apiKey = document.getElementById('airtable-api-key').value.trim();
+            const baseId = document.getElementById('airtable-base-id').value.trim();
+            const tableName = document.getElementById('airtable-table-name').value.trim();
+
+            if (!apiKey || !baseId || !tableName) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            airtableConfig = { apiKey, baseId, tableName };
+            saveUserAirtableConfig();
+
+            closeAirtableModal();
+            loadSettingsFromAirtable();
+        }
+
+        // Load Settings from Airtable
+        async function loadSettingsFromAirtable() {
+            showNotification('Loading settings from Airtable...', 'info');
+
+            try {
+                const response = await fetch(
+                    `https://api.airtable.com/v0/${airtableConfig.baseId}/${airtableConfig.tableName}`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${airtableConfig.apiKey}`
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error(`Airtable API Error: ${response.status}`);
+                }
+
+                const data = await response.json();
+                parametersData = data.records;
+
+                updateSettingsUI(parametersData);
+                showNotification('Settings loaded successfully!', 'success');
+                
+                // Enable editing
+                enableSettingEditing();
+
+            } catch (error) {
+                console.error('Error loading settings:', error);
+                showNotification('Failed to load settings. Check your Airtable configuration.', 'error');
+                showAirtableModal();
+            }
+        }
+
+        // Update Settings UI with Airtable Data
+        function updateSettingsUI(records) {
+            const settingsMap = {};
+            records.forEach(record => {
+                const param = record.fields.Parameter;
+                const value = record.fields.Value;
+                settingsMap[param] = { value, record };
+            });
+
+            // Update Trading Parameters
+            updateSettingDisplay('base_dca_amount', settingsMap, '$');
+            updateSettingDisplay('max_purchase', settingsMap, '$');
+            updateSettingDisplay('max_daily_buys', settingsMap);
+            updateSettingDisplay('cooldown_hours', settingsMap, '', ' hours');
+
+            // Update Price Thresholds
+            updateSettingDisplay('large_dip_multiplier', settingsMap, '', 'x');
+            updateSettingDisplay('dip_multiplier', settingsMap, '', 'x');
+            updateSettingDisplay('small_dip_multiplier', settingsMap, '', 'x');
+            updateSettingDisplay('small_spike_multiplier', settingsMap, '', 'x');
+            updateSettingDisplay('spike_multiplier', settingsMap, '', 'x');
+
+            // Update AI Configuration
+            const aiConfidence = settingsMap['ai_confidence_level']?.value || 0.75;
+            updateSettingByLabel('AI High Confidence', `≥${Math.round(aiConfidence * 100)}%`);
+            updateSettingDisplay('ai_confidence_max_cap', settingsMap, '', '%', 100);
+            updateSettingDisplay('ai_confidence_min_floor', settingsMap, '', '%', 100);
+
+            // Update Stop-Loss
+            const stopLossEnabled = settingsMap['stop_loss_enabled']?.value === 1;
+            document.querySelector('.toggle-switch').classList.toggle('active', stopLossEnabled);
+            updateSettingDisplay('stop_loss_light_sell_pct', settingsMap, 'Sell ', '%');
+            updateSettingDisplay('stop_loss_moderate_sell_pct', settingsMap, 'Sell ', '%');
+            updateSettingDisplay('stop_loss_severe_sell_pct', settingsMap, 'Sell ', '%');
+        }
+
+        function updateSettingDisplay(param, settingsMap, prefix = '', suffix = '', multiplier = 1) {
+            if (settingsMap[param]) {
+                const value = settingsMap[param].value;
+                const displayValue = multiplier !== 1 ? (value * multiplier).toFixed(0) : value;
+                const element = document.querySelector(`[data-param="${param}"] .setting-value`);
+                if (element) {
+                    element.textContent = `${prefix}${displayValue}${suffix}`;
+                    element.setAttribute('data-record-id', settingsMap[param].record.id);
+                }
+            }
+        }
+
+        function updateSettingByLabel(label, value) {
+            const elements = document.querySelectorAll('.setting-item');
+            elements.forEach(el => {
+                if (el.querySelector('.setting-label').textContent === label) {
+                    el.querySelector('.setting-value').textContent = value;
+                }
+            });
+        }
+
+        // Enable Editing
+        function enableSettingEditing() {
+            document.querySelectorAll('.setting-item').forEach(item => {
+                const valueElement = item.querySelector('.setting-value');
+                const recordId = valueElement?.getAttribute('data-record-id');
+                
+                if (recordId) {
+                    item.style.cursor = 'pointer';
+                    item.addEventListener('click', function() {
+                        openEditModal(this);
+                    });
+                }
+            });
+        }
+
+        // Edit Modal Functions
+        function openEditModal(settingItem) {
+            const label = settingItem.querySelector('.setting-label').textContent;
+            const valueElement = settingItem.querySelector('.setting-value');
+            const currentValue = valueElement.textContent.replace(/[^0-9.-]/g, '');
+            const paramName = settingItem.getAttribute('data-param');
+            const recordId = valueElement.getAttribute('data-record-id');
+
+            if (!recordId) return;
+
+            const record = parametersData.find(r => r.id === recordId);
+            if (!record) return;
+
+            currentEditingRecord = {
+                recordId,
+                paramName,
+                settingItem,
+                description: record.fields.Description || ''
             };
+
+            document.getElementById('edit-label').textContent = label;
+            document.getElementById('edit-value').value = currentValue;
+            document.getElementById('edit-description').textContent = currentEditingRecord.description;
+            document.getElementById('edit-modal').style.display = 'flex';
         }
 
-        function renderDashboard(data) {
-            const p = data.portfolio;
-            
-            // Update main stats
-            document.getElementById('btcHoldings').textContent = p.btc.toFixed(8) + ' BTC';
-            document.getElementById('btcPrice').textContent = `@ $${p.currentPrice.toLocaleString()}`;
-            
-            document.getElementById('portfolioValue').textContent = '$' + p.usd.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            document.getElementById('avgCost').textContent = `Avg cost: $${p.avgCost.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            
-            document.getElementById('totalInvested').textContent = '$' + p.invested.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            document.getElementById('txCount').textContent = `${p.txCount} transactions`;
-            
-            const profitElement = document.getElementById('profitLoss');
-            const profitSign = p.profitUSD >= 0 ? '+' : '';
-            profitElement.textContent = profitSign + '$' + p.profitUSD.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            profitElement.className = 'stat-value ' + (p.profitUSD >= 0 ? 'positive' : 'negative');
-            document.getElementById('profitPct').textContent = `${profitSign}${p.profitPct.toFixed(2)}%`;
-            
-            // Update last update time
-            document.getElementById('lastUpdate').textContent = new Date(data.lastUpdate).toLocaleString();
-            
-            // Render transactions
-            const txList = document.getElementById('transactionList');
-            if (data.recentTransactions && data.recentTransactions.length > 0) {
-                txList.innerHTML = data.recentTransactions.map(tx => {
-                    // Use fullText which combines trigger + reasoning
-                    // Or combine them here if using older webhook
-                    let displayText = tx.fullText || tx.trigger || 'Manual transaction';
-                    
-                    // If we have separate reasoning field, combine them
-                    if (!tx.fullText && tx.reasoning && tx.reasoning.trim() !== '') {
-                        displayText = `${tx.trigger}: ${tx.reasoning}`;
-                    }
-                    
-                    const isManual = displayText === 'Manual' || displayText === 'Manual transaction';
-                    
-                    return `
-                    <div class="transaction-item" style="flex-direction: column; align-items: stretch;">
-                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                            <div>
-                                <div><span class="tx-type ${tx.type.toLowerCase()}">${tx.type}</span></div>
-                                <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
-                                    ${new Date(tx.date).toLocaleDateString()} ${new Date(tx.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                </div>
-                            </div>
-                            <div style="text-align: right;">
-                                ${tx.amountBTC > 0 ? `<div style="font-weight: bold;">${tx.amountBTC.toFixed(8)} BTC</div>` : '<div style="font-weight: bold; color: #999;">No Trade</div>'}
-                                ${tx.amountUSD > 0 ? `<div style="font-size: 0.9em; color: #666;">$${tx.amountUSD.toFixed(2)}</div>` : '<div style="font-size: 0.9em; color: #999;">$0.00</div>'}
-                                <div style="font-size: 0.85em; color: #999;">@$${tx.price.toLocaleString()}</div>
-                            </div>
-                        </div>
-                        <div style="font-size: 0.82em; color: #555; background: ${isManual ? '#f3f4f6' : '#f0f9ff'}; padding: 10px 12px; border-radius: 8px; margin-top: 4px; line-height: 1.5; border-left: 3px solid ${isManual ? '#9ca3af' : '#667eea'};">
-                            ${isManual ? '📋' : '💡'} ${displayText}
-                        </div>
-                    </div>
-                `}).join('');
-            } else {
-                txList.innerHTML = '<div style="text-align: center; padding: 40px; color: #999;">No recent transactions</div>';
+        function closeEditModal() {
+            document.getElementById('edit-modal').style.display = 'none';
+            currentEditingRecord = null;
+        }
+
+        // Save Setting to Airtable
+        async function saveSetting() {
+            if (!currentEditingRecord) return;
+
+            const newValue = parseFloat(document.getElementById('edit-value').value);
+            if (isNaN(newValue)) {
+                alert('Please enter a valid number');
+                return;
             }
-            
-            // Render performance metrics
-            const metrics = calculatePerformanceMetrics(data);
-            const metricsContainer = document.getElementById('performanceMetrics');
-            
-            metricsContainer.innerHTML = `
-                <div class="metric-row">
-                    <div class="metric-label">Win Rate</div>
-                    <div class="metric-value ${metrics.winRate >= 60 ? 'good' : metrics.winRate >= 40 ? 'neutral' : 'bad'}">
-                        ${metrics.winRate.toFixed(1)}%
-                    </div>
-                </div>
-                
-                <div class="metric-row">
-                    <div class="metric-label">Best Entry</div>
-                    <div class="metric-value good">
-                        $${metrics.bestPurchase.price.toLocaleString()} (+${metrics.bestPurchase.gain.toFixed(1)}%)
-                    </div>
-                </div>
-                
-                <div class="metric-row">
-                    <div class="metric-label">Worst Entry</div>
-                    <div class="metric-value ${metrics.worstPurchase.loss >= 0 ? 'good' : 'bad'}">
-                        $${metrics.worstPurchase.price.toLocaleString()} (${metrics.worstPurchase.loss >= 0 ? '+' : ''}${metrics.worstPurchase.loss.toFixed(1)}%)
-                    </div>
-                </div>
-                
-                <div class="metric-row">
-                    <div class="metric-label">Accumulation Rate</div>
-                    <div class="metric-value">
-                        ${metrics.accumulationRate.toFixed(8)} BTC/day
-                    </div>
-                </div>
-                
-                <div class="metric-row">
-                    <div class="metric-label">DCA Efficiency Score</div>
-                    <div class="metric-value ${metrics.dcaScore >= 70 ? 'good' : metrics.dcaScore >= 50 ? 'neutral' : 'bad'}">
-                        ${metrics.dcaScore}/100
-                    </div>
-                </div>
-                
-                <div style="padding: 15px; background: #f9fafb; border-radius: 10px;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                        <div class="metric-label">Next Target: ${metrics.nextTarget.label}</div>
-                        <div style="font-size: 0.9em; font-weight: bold; color: #667eea;">
-                            ${metrics.nextTarget.progress.toFixed(0)}%
-                        </div>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${metrics.nextTarget.progress}%"></div>
-                    </div>
-                </div>
-            `;
-        }
 
-        async function triggerWorkflow() {
-            const btn = document.getElementById('triggerBtn');
+            const btn = document.querySelector('#edit-modal .btn-primary');
+            const btnText = btn.querySelector('.btn-text');
+            const loader = btn.querySelector('.loading');
+            
+            btnText.style.display = 'none';
+            loader.style.display = 'inline-block';
             btn.disabled = true;
-            btn.textContent = '⏳ Running workflow...';
-            
+
             try {
-                await fetch(TRIGGER_WEBHOOK, { method: 'POST' });
-                
-                btn.textContent = '✅ Triggered! Checking for updates...';
-                
-                // Poll for new data every 5 seconds for up to 2 minutes
-                let pollCount = 0;
-                const maxPolls = 24;
-                const lastUpdate = document.getElementById('lastUpdate').textContent;
-                
-                const pollInterval = setInterval(async () => {
-                    pollCount++;
-                    btn.textContent = `🔄 Checking... (${pollCount * 5}s)`;
-                    
-                    await loadDashboard();
-                    const newUpdate = document.getElementById('lastUpdate').textContent;
-                    
-                    if (newUpdate !== lastUpdate) {
-                        clearInterval(pollInterval);
-                        btn.textContent = '✅ Dashboard Updated!';
-                        setTimeout(() => {
-                            btn.disabled = false;
-                            btn.textContent = 'Run DCA Check Now';
-                        }, 2000);
-                    } else if (pollCount >= maxPolls) {
-                        clearInterval(pollInterval);
-                        btn.textContent = '⚠️ Check complete (data may not have changed)';
-                        setTimeout(() => {
-                            btn.disabled = false;
-                            btn.textContent = 'Run DCA Check Now';
-                        }, 3000);
+                const response = await fetch(
+                    `https://api.airtable.com/v0/${airtableConfig.baseId}/${airtableConfig.tableName}/${currentEditingRecord.recordId}`,
+                    {
+                        method: 'PATCH',
+                        headers: {
+                            'Authorization': `Bearer ${airtableConfig.apiKey}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            fields: {
+                                Value: newValue
+                            }
+                        })
                     }
-                }, 5000);
+                );
+
+                if (!response.ok) {
+                    throw new Error(`Update failed: ${response.status}`);
+                }
+
+                const updatedRecord = await response.json();
                 
+                // Update local data
+                const index = parametersData.findIndex(r => r.id === currentEditingRecord.recordId);
+                if (index !== -1) {
+                    parametersData[index] = updatedRecord;
+                }
+
+                // Update UI
+                updateSettingsUI(parametersData);
+                
+                closeEditModal();
+                showNotification('Setting updated successfully!', 'success');
+
             } catch (error) {
-                console.error('Error triggering workflow:', error);
+                console.error('Error updating setting:', error);
+                showNotification('Failed to update setting. Please try again.', 'error');
+            } finally {
+                btnText.style.display = 'inline';
+                loader.style.display = 'none';
                 btn.disabled = false;
-                btn.textContent = 'Run DCA Check Now';
-                showError(`Failed to trigger workflow: ${error.message}`);
             }
         }
 
-        // Initial load
-        loadDashboard();
+        // Notification System
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => notification.classList.add('show'), 100);
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Modal Close Handlers
+        document.querySelectorAll('.modal-close').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.closest('.modal').style.display = 'none';
+            });
+        });
+
+        window.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal')) {
+                e.target.style.display = 'none';
+            }
+        });
+
+        // Toggle Stop-Loss
+        document.querySelector('.toggle-switch').addEventListener('click', async function() {
+            const isActive = this.classList.contains('active');
+            const newValue = isActive ? 0 : 1;
+
+            const record = parametersData.find(r => r.fields.Parameter === 'stop_loss_enabled');
+            if (!record) return;
+
+            try {
+                const response = await fetch(
+                    `https://api.airtable.com/v0/${airtableConfig.baseId}/${airtableConfig.tableName}/${record.id}`,
+                    {
+                        method: 'PATCH',
+                        headers: {
+                            'Authorization': `Bearer ${airtableConfig.apiKey}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            fields: { Value: newValue }
+                        })
+                    }
+                );
+
+                if (response.ok) {
+                    this.classList.toggle('active');
+                    showNotification(`Stop-Loss ${newValue ? 'enabled' : 'disabled'}`, 'success');
+                }
+            } catch (error) {
+                console.error('Error toggling stop-loss:', error);
+                showNotification('Failed to update stop-loss setting', 'error');
+            }
+        });
+
+        // Settings Button - Show Airtable Config
+        const settingsBtn = document.createElement('button');
+        settingsBtn.className = 'btn btn-secondary';
+        settingsBtn.style.cssText = 'width: 100%; margin-top: 1rem;';
+        settingsBtn.innerHTML = '⚙️ Airtable Settings';
+        settingsBtn.onclick = showAirtableModal;
         
-        // Auto-refresh every 10 minutes
-        setInterval(loadDashboard, REFRESH_INTERVAL);
+        const existingBtn = document.querySelector('.settings-panel .btn-primary');
+        existingBtn.parentNode.insertBefore(settingsBtn, existingBtn.nextSibling);
+
+        // Refresh Button
+        const refreshBtn = document.createElement('button');
+        refreshBtn.className = 'btn btn-secondary';
+        refreshBtn.style.cssText = 'width: 100%; margin-top: 0.5rem;';
+        refreshBtn.innerHTML = '🔄 Refresh Settings';
+        refreshBtn.onclick = loadSettingsFromAirtable;
+        settingsBtn.parentNode.insertBefore(refreshBtn, settingsBtn.nextSibling);
+
+        // Transaction item click
+        document.querySelectorAll('.transaction-item').forEach(item => {
+            item.addEventListener('click', function() {
+                console.log('Transaction clicked:', this);
+            });
+        });
+
+        // Smooth scroll for nav links
+        document.querySelectorAll('nav a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                const href = this.getAttribute('href');
+                if (href.startsWith('#')) {
+                    e.preventDefault();
+                    const target = document.querySelector(href);
+                    if (target) {
+                        target.scrollIntoView({ behavior: 'smooth' });
+                    }
+                }
+            });
+        });
+
+        // Execute Trade button
+        document.querySelector('.btn-primary').addEventListener('click', function() {
+            const originalText = this.innerHTML;
+            this.innerHTML = '<span class="loading"></span> Executing...';
+            this.disabled = true;
+            
+            setTimeout(() => {
+                this.innerHTML = originalText;
+                this.disabled = false;
+                alert('Trade execution would trigger n8n workflow here!');
+            }, 2000);
+        });
     </script>
 </body>
 </html>
