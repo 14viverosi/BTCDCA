@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bitcoin DCA Bot - Login</title>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Aeonik:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e13;
+            --bg-secondary: #131922;
+            --bg-tertiary: #1a2332;
+            --bg-elevated: #1f2937;
+            --border-primary: #2a3441;
+            --border-secondary: #374151;
+            --text-primary: #f9fafb;
+            --text-secondary: #9ca3af;
+            --text-tertiary: #6b7280;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-blue: #3b82f6;
+            --accent-yellow: #f59e0b;
+            --accent-purple: #8b5cf6;
+            --shadow-lg: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+            --shadow-xl: 0 20px 50px -12px rgba(0, 0, 0, 0.7);
+        }
+
+        body {
+            font-family: 'Aeonik', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 20% 50%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%);
+            animation: gradientRotate 20s ease-in-out infinite;
+            z-index: -1;
+        }
+
+        @keyframes gradientRotate {
+            0%, 100% { transform: rotate(0deg) scale(1); }
+            50% { transform: rotate(180deg) scale(1.1); }
+        }
+
+        .particle {
+            position: fixed;
+            width: 4px;
+            height: 4px;
+            background: var(--accent-blue);
+            border-radius: 50%;
+            opacity: 0.2;
+            z-index: -1;
+            animation: float linear infinite;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(100vh) translateX(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.3;
+            }
+            90% {
+                opacity: 0.3;
+            }
+            100% {
+                transform: translateY(-100vh) translateX(100px);
+                opacity: 0;
+            }
+        }
+
+        .login-container {
+            width: 90%;
+            max-width: 450px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 24px;
+            padding: 3rem;
+            box-shadow: var(--shadow-xl);
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.1), transparent);
+            border-radius: 50%;
+            animation: pulse 4s ease-in-out infinite;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.1; }
+            50% { transform: scale(1.2); opacity: 0.15; }
+        }
+
+        .logo-section {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .logo-text {
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+        }
+
+        .logo-subtitle {
+            font-size: 0.9rem;
+            color: var(--text-tertiary);
+            font-weight: 400;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.875rem 1rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-primary);
+            border-radius: 12px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            font-family: inherit;
+            transition: all 0.2s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .form-group input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .password-wrapper {
+            position: relative;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: color 0.2s;
+        }
+
+        .password-toggle:hover {
+            color: var(--text-primary);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 0.875rem 1.5rem;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            font-family: inherit;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-green));
+            color: white;
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 30px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border-secondary);
+            margin-top: 0.75rem;
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--text-tertiary);
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: var(--accent-red);
+            padding: 0.875rem 1rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+            display: none;
+            animation: shake 0.4s ease-in-out;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 2rem 0;
+            color: var(--text-tertiary);
+            font-size: 0.85rem;
+        }
+
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-primary);
+        }
+
+        .divider::before {
+            margin-right: 1rem;
+        }
+
+        .divider::after {
+            margin-left: 1rem;
+        }
+
+        .link {
+            color: var(--accent-blue);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.2s;
+        }
+
+        .link:hover {
+            color: var(--accent-green);
+            text-decoration: underline;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .form-container {
+            display: none;
+        }
+
+        .form-container.active {
+            display: block;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .notification {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            padding: 1rem 1.5rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-primary);
+            border-radius: 12px;
+            box-shadow: var(--shadow-xl);
+            z-index: 3000;
+            transform: translateX(400px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            max-width: 350px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+            opacity: 1;
+        }
+
+        .notification::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .notification-success {
+            border-left: 3px solid var(--accent-green);
+        }
+
+        .notification-success::before {
+            background: var(--accent-green);
+        }
+
+        .notification-error {
+            border-left: 3px solid var(--accent-red);
+        }
+
+        .notification-error::before {
+            background: var(--accent-red);
+        }
+
+        @media (max-width: 480px) {
+            .login-container {
+                padding: 2rem 1.5rem;
+            }
+
+            .logo-text {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Floating Particles -->
+    <div class="particle" style="left: 10%; animation-duration: 15s; animation-delay: 0s;"></div>
+    <div class="particle" style="left: 20%; animation-duration: 20s; animation-delay: 2s;"></div>
+    <div class="particle" style="left: 30%; animation-duration: 18s; animation-delay: 4s;"></div>
+    <div class="particle" style="left: 40%; animation-duration: 22s; animation-delay: 1s;"></div>
+    <div class="particle" style="left: 50%; animation-duration: 19s; animation-delay: 3s;"></div>
+    <div class="particle" style="left: 60%; animation-duration: 16s; animation-delay: 5s;"></div>
+    <div class="particle" style="left: 70%; animation-duration: 21s; animation-delay: 2s;"></div>
+    <div class="particle" style="left: 80%; animation-duration: 17s; animation-delay: 4s;"></div>
+    <div class="particle" style="left: 90%; animation-duration: 23s; animation-delay: 1s;"></div>
+
+    <div class="login-container">
+        <div class="logo-section">
+            <div class="logo">⚡</div>
+            <div class="logo-text">DCA Bot</div>
+            <div class="logo-subtitle">Bitcoin Dollar Cost Averaging</div>
+        </div>
+
+        <!-- Login Form -->
+        <div id="login-form" class="form-container active">
+            <div id="error-message" class="error-message"></div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="login-email">Email</label>
+                    <input 
+                        type="email" 
+                        id="login-email" 
+                        placeholder="you@example.com"
+                        required
+                        autocomplete="email"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <div class="password-wrapper">
+                        <input 
+                            type="password" 
+                            id="login-password" 
+                            placeholder="Enter your password"
+                            required
+                            autocomplete="current-password"
+                        >
+                        <button type="button" class="password-toggle" onclick="togglePassword('login-password')">
+                            👁️
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <span class="btn-text">Sign In</span>
+                </button>
+            </form>
+
+            <div class="divider">OR</div>
+
+            <button class="btn btn-secondary" onclick="showRegisterForm()">
+                Create New Account
+            </button>
+
+            <p class="text-center" style="margin-top: 1.5rem;">
+                <a href="#" class="link" onclick="resetPassword(); return false;">Forgot password?</a>
+            </p>
+        </div>
+
+        <!-- Register Form -->
+        <div id="register-form" class="form-container">
+            <div id="register-error-message" class="error-message"></div>
+
+            <form id="registerForm">
+                <div class="form-group">
+                    <label for="register-name">Full Name</label>
+                    <input 
+                        type="text" 
+                        id="register-name" 
+                        placeholder="John Doe"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="register-email">Email</label>
+                    <input 
+                        type="email" 
+                        id="register-email" 
+                        placeholder="you@example.com"
+                        required
+                        autocomplete="email"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="register-password">Password</label>
+                    <div class="password-wrapper">
+                        <input 
+                            type="password" 
+                            id="register-password" 
+                            placeholder="Create a password"
+                            required
+                            autocomplete="new-password"
+                            minlength="8"
+                        >
+                        <button type="button" class="password-toggle" onclick="togglePassword('register-password')">
+                            👁️
+                        </button>
+                    </div>
+                    <small style="color: var(--text-tertiary); font-size: 0.8rem; display: block; margin-top: 0.5rem;">
+                        Minimum 8 characters
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="register-confirm-password">Confirm Password</label>
+                    <div class="password-wrapper">
+                        <input 
+                            type="password" 
+                            id="register-confirm-password" 
+                            placeholder="Confirm your password"
+                            required
+                            autocomplete="new-password"
+                        >
+                        <button type="button" class="password-toggle" onclick="togglePassword('register-confirm-password')">
+                            👁️
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary">
+                    <span class="btn-text">Create Account</span>
+                </button>
+            </form>
+
+            <div class="divider">OR</div>
+
+            <button class="btn btn-secondary" onclick="showLoginForm()">
+                Back to Sign In
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // SUPABASE CONFIGURATION
+        // Replace these with your actual Supabase credentials
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL'; // e.g., https://xxxxx.supabase.co
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
+        // Initialize Supabase client
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Check if user is already logged in
+        async function checkExistingSession() {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                // User is logged in, redirect to dashboard
+                window.location.href = 'dashboard_supabase.html';
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkExistingSession();
+            setupFormHandlers();
+        });
+
+        // Setup form handlers
+        function setupFormHandlers() {
+            // Login form
+            document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await handleLogin();
+            });
+
+            // Register form
+            document.getElementById('registerForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await handleRegister();
+            });
+        }
+
+        // Handle login
+        async function handleLogin() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            const btn = document.querySelector('#loginForm .btn-primary');
+            const btnText = btn.querySelector('.btn-text');
+
+            btnText.innerHTML = '<span class="loading"></span> Signing in...';
+            btn.disabled = true;
+
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+                if (error) throw error;
+
+                showNotification('Login successful! Redirecting...', 'success');
+                
+                setTimeout(() => {
+                    window.location.href = 'dashboard_supabase.html';
+                }, 1000);
+
+            } catch (error) {
+                console.error('Login error:', error);
+                showError('error-message', error.message);
+                btnText.innerHTML = 'Sign In';
+                btn.disabled = false;
+            }
+        }
+
+        // Handle registration
+        async function handleRegister() {
+            const name = document.getElementById('register-name').value;
+            const email = document.getElementById('register-email').value;
+            const password = document.getElementById('register-password').value;
+            const confirmPassword = document.getElementById('register-confirm-password').value;
+            const btn = document.querySelector('#registerForm .btn-primary');
+            const btnText = btn.querySelector('.btn-text');
+
+            // Validate passwords match
+            if (password !== confirmPassword) {
+                showError('register-error-message', 'Passwords do not match');
+                return;
+            }
+
+            btnText.innerHTML = '<span class="loading"></span> Creating account...';
+            btn.disabled = true;
+
+            try {
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: {
+                            full_name: name
+                        }
+                    }
+                });
+
+                if (error) throw error;
+
+                // Create default parameters for new user
+                await createDefaultParameters(data.user.id);
+
+                showNotification('Account created successfully! Redirecting...', 'success');
+                
+                setTimeout(() => {
+                    window.location.href = 'dashboard_supabase.html';
+                }, 1000);
+
+            } catch (error) {
+                console.error('Registration error:', error);
+                showError('register-error-message', error.message);
+                btnText.innerHTML = 'Create Account';
+                btn.disabled = false;
+            }
+        }
+
+        // Create default parameters for new user
+        async function createDefaultParameters(userId) {
+            const defaultParams = [
+                { parameter: 'base_dca_amount', value: 50.00, description: 'Base per trade amount' },
+                { parameter: 'max_purchase', value: 125.00, description: 'Max single purchase (safety)' },
+                { parameter: 'min_purchase', value: 1.00, description: 'Min single purchase (safety)' },
+                { parameter: 'max_daily_buys', value: 5, description: 'Max single day buys' },
+                { parameter: 'max_daily_sells', value: 3, description: 'Max single day sells' },
+                { parameter: 'cooldown_hours', value: 3, description: 'Time between trades' },
+                { parameter: 'large_dip_threshold', value: 10.00, description: '% drop to trigger increased buy on large dips' },
+                { parameter: 'dip_threshold', value: 7.50, description: '% drop to trigger increased buy' },
+                { parameter: 'small_dip_threshold', value: 2.50, description: '% drop to trigger moderate buy' },
+                { parameter: 'small_spike_threshold', value: 2.50, description: '% rise to trigger slight reduction' },
+                { parameter: 'spike_threshold', value: 7.50, description: '% rise to trigger reduced buy' },
+                { parameter: 'large_spike_threshold', value: 10.00, description: '% rise to trigger reduced buy on large spikes' },
+                { parameter: 'small_dip_multiplier', value: 0.50, description: 'Multiply amount by this on small dips' },
+                { parameter: 'dip_multiplier', value: 1.50, description: 'Multiply amount by this on dips' },
+                { parameter: 'large_dip_multiplier', value: 2.50, description: 'Multiply amount by this on large dips' },
+                { parameter: 'small_spike_multiplier', value: 0.50, description: 'Multiply amount by this on small spikes' },
+                { parameter: 'spike_multiplier', value: 0.25, description: 'Multiply amount by this on spikes' },
+                { parameter: 'large_spike_multiplier', value: 0.10, description: 'Multiply amount by this on large spikes' },
+                { parameter: 'ai_confidence_level', value: 0.75, description: 'AI confidence threshold for execution' },
+                { parameter: 'ai_confidence_max_cap', value: 0.95, description: 'Maximum confidence level (safety cap)' },
+                { parameter: 'ai_confidence_min_floor', value: 0.30, description: 'Minimum confidence level (safety floor)' },
+                { parameter: 'rsi_oversold_threshold', value: 30.00, description: 'RSI level considered oversold (buy signal)' },
+                { parameter: 'rsi_overbought_threshold', value: 70.00, description: 'RSI level considered overbought (sell signal)' }
+            ];
+
+            // Insert all parameters with user_id
+            const parametersWithUserId = defaultParams.map(param => ({
+                ...param,
+                user_id: userId
+            }));
+
+            const { error } = await supabaseClient
+                .from('parameters')
+                .insert(parametersWithUserId);
+
+            if (error) {
+                console.error('Error creating default parameters:', error);
+            }
+        }
+
+        // Password reset
+        async function resetPassword() {
+            const email = prompt('Enter your email address:');
+            if (!email) return;
+
+            try {
+                const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin + '/reset-password.html',
+                });
+
+                if (error) throw error;
+
+                showNotification('Password reset email sent! Check your inbox.', 'success');
+            } catch (error) {
+                console.error('Password reset error:', error);
+                showNotification('Failed to send password reset email', 'error');
+            }
+        }
+
+        // Form switching
+        function showRegisterForm() {
+            document.getElementById('login-form').classList.remove('active');
+            document.getElementById('register-form').classList.add('active');
+            clearErrors();
+        }
+
+        function showLoginForm() {
+            document.getElementById('register-form').classList.remove('active');
+            document.getElementById('login-form').classList.add('active');
+            clearErrors();
+        }
+
+        // Password toggle
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
+        // Error handling
+        function showError(elementId, message) {
+            const errorEl = document.getElementById(elementId);
+            errorEl.textContent = message;
+            errorEl.classList.add('show');
+        }
+
+        function clearErrors() {
+            document.querySelectorAll('.error-message').forEach(el => {
+                el.classList.remove('show');
+            });
+        }
+
+        // Notification system
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => notification.classList.add('show'), 100);
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
