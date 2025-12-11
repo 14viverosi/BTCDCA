@@ -1167,7 +1167,7 @@
                 
                 if (error || !user) {
                     // Not authenticated, redirect to login
-                    .href = 'login.html';
+                    window.location.href = 'login.html';
                     return;
                 }
 
